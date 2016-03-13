@@ -19,10 +19,10 @@ setup(
     author_email='pkucmus@gmail.com',
     install_requires=[
         'pyjwt==1.4.0',
-        'restservice',
+        'restservice==0.2',
     ],
     dependency_links=[
-        'git+https://github.com/PyPila/restservice.git#restservice'
+        'https://github.com/PyPila/restservice/tarball/master#egg=restservice-0.2'
     ],
     classifiers=[
         'Environment :: Web Environment',
