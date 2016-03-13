@@ -1,16 +1,15 @@
 from django.http import HttpResponseRedirect
-from django.contrib.admin import AdminSite
+from django.contrib import admin
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.views.decorators.cache import never_cache
 from django.core.urlresolvers import reverse
-from django.contrib.auth.models import User, Group
 
 from authclient.models import AuthorizedApplication
 from authclient.forms import AdminAuthenticationForm
 from authclient.views import login as login_view
 
 
-class AuthAdminSite(AdminSite):
+class AuthAdminSite(admin.AdminSite):
     site_header = 'Amok administration'
     login_form = AdminAuthenticationForm
 
@@ -49,6 +48,10 @@ class AuthAdminSite(AdminSite):
 
 
 site = AuthAdminSite(name='admin')
-site.register(AuthorizedApplication)
-site.register(User)
-site.register(Group)
+
+
+class AuthorizedApplicationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'api_token', )
+
+
+site.register(AuthorizedApplication, AuthorizedApplicationAdmin)
