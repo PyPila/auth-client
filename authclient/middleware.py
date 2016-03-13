@@ -1,3 +1,5 @@
+from requests.exceptions import HTTPError
+
 from django.http import HttpResponse
 from django.conf import settings
 from django.utils.functional import SimpleLazyObject
@@ -6,9 +8,10 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.crypto import constant_time_compare
 
 from authclient import (
-    BACKEND_SESSION_KEY, HASH_SESSION_KEY, _get_user_session_key
+    BACKEND_SESSION_KEY, HASH_SESSION_KEY, _get_user_session_key, SESSION_KEY
 )
 from authclient.models import AuthorizedApplication
+from authclient.client import auth_client
 
 
 class AuthorizedApplicationMiddleware(object):
@@ -42,17 +45,17 @@ class JWTAuthMiddleware(object):
         )
         request.user = SimpleLazyObject(lambda: self.get_user(request))
 
-    def get_user(self, request):
+    def get_user(self, request, resource_token=None):
         user = None
         try:
-            user_id = _get_user_session_key(request)
+            resource_token = resource_token or _get_user_session_key(request)
             backend_path = request.session[BACKEND_SESSION_KEY]
         except KeyError:
             pass
         else:
             if backend_path in settings.AUTHENTICATION_BACKENDS:
                 backend = load_backend(backend_path)
-                user = backend.authenticate(user_id)
+                user = backend.authenticate(resource_token)
                 if hasattr(user, 'get_session_auth_hash'):
                     session_hash = request.session.get(HASH_SESSION_KEY)
                     session_hash_verified = (
@@ -68,4 +71,19 @@ class JWTAuthMiddleware(object):
         return user or AnonymousUser()
 
     def process_response(self, request, response):
+        try:
+            resource_token = _get_user_session_key(request)
+        except KeyError:
+            pass
+        else:
+            try:
+                resource_token = auth_client.token_refresh.call(
+                    payload={'token': resource_token},
+                    headers={'X-APPLICATION': settings.AUTH_API_TOKEN},
+                )['resource_token']
+            except HTTPError as e:
+                print(e.response.content)
+            else:
+                request.session[SESSION_KEY] = resource_token
+
         return response
