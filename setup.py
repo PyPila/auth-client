@@ -19,6 +19,10 @@ setup(
     author_email='pkucmus@gmail.com',
     install_requires=[
         'pyjwt==1.4.0',
+        'restservice',
+    ],
+    dependency_links=[
+        'git+https://github.com/PyPila/restservice.git#restservice'
     ],
     classifiers=[
         'Environment :: Web Environment',
