@@ -1,5 +1,4 @@
-from requests.exceptions import HTTPError
-
+import logging
 from django.http import HttpResponse
 from django.conf import settings
 from django.utils.functional import SimpleLazyObject
@@ -8,10 +7,11 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.crypto import constant_time_compare
 
 from authclient import (
-    BACKEND_SESSION_KEY, HASH_SESSION_KEY, _get_user_session_key, SESSION_KEY
+    BACKEND_SESSION_KEY, HASH_SESSION_KEY, _get_user_session_key,
 )
 from authclient.models import AuthorizedApplication
-from authclient.client import auth_client
+
+logger = logging.getLogger('authclient')
 
 
 class AuthorizedApplicationMiddleware(object):
@@ -19,9 +19,6 @@ class AuthorizedApplicationMiddleware(object):
     def process_view(self, request, view_func, view_args, view_kwargs):
         if getattr(view_func, 'app_auth_exempt', False):
             return None
-        for path in settings.APP_EXEMPT_URLS:
-            if request.path.startswith(path):
-                return None
 
         api_token = request.META.get('HTTP_X_APPLICATION')
         if api_token:
@@ -31,6 +28,7 @@ class AuthorizedApplicationMiddleware(object):
                 return None
             except AuthorizedApplication.DoesNotExist:
                 pass
+        logger.info('Unauthenticated application.')
         return HttpResponse(status=401)
 
 
@@ -69,21 +67,3 @@ class JWTAuthMiddleware(object):
                         user = None
 
         return user or AnonymousUser()
-
-    def process_response(self, request, response):
-        try:
-            resource_token = _get_user_session_key(request)
-        except KeyError:
-            pass
-        else:
-            try:
-                resource_token = auth_client.token_refresh.call(
-                    payload={'token': resource_token},
-                    headers={'X-APPLICATION': settings.AUTH_API_TOKEN},
-                )['resource_token']
-            except HTTPError as e:
-                print(e.response.content)
-            else:
-                request.session[SESSION_KEY] = resource_token
-
-        return response
