@@ -24,7 +24,7 @@ setup(
         'restservice==0.2',
     ],
     dependency_links=[
-        'https://github.com/PyPila/restservice/tarball/master#egg=restservice-0.2'
+        'git+https://github.com/PyPila/restservice.git#egg=restservice-0.2'
     ],
     classifiers=[
         'Environment :: Web Environment',
